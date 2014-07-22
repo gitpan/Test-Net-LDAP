@@ -120,57 +120,64 @@ the target (host/port/path) and scheme (ldap/ldaps/ldapi).
 my $mock_map = {};
 
 sub new {
-	my $class = shift;
-	$class = ref $class || $class;
-	$class = __PACKAGE__ if $class eq 'Net::LDAP'; # special case (ldap_mockify)
-	my $target = &_mock_target;
-	
-	my $self = bless {
-		mock_data  => undef,
-		net_ldap_socket => IO::Socket->new(),
-	}, $class;
-	
-	$self->{mock_data} = ($mock_map->{$target} ||= do {
-		require Test::Net::LDAP::Mock::Data;
-		Test::Net::LDAP::Mock::Data->new($self);
-	});
-	
-	return $self;
+    my $class = shift;
+    $class = ref $class || $class;
+    $class = __PACKAGE__ if $class eq 'Net::LDAP'; # special case (ldap_mockify)
+    my $target = &_mock_target;
+    
+    my $self = bless {
+        mock_data  => undef,
+        net_ldap_socket => IO::Socket->new(),
+    }, $class;
+    
+    $self->{mock_data} = ($mock_map->{$target} ||= do {
+        require Test::Net::LDAP::Mock::Data;
+        Test::Net::LDAP::Mock::Data->new($self);
+    });
+    
+    return $self;
 }
 
 sub _mock_target {
-	my $host = shift if @_ % 2;
-	my $arg = &Net::LDAP::_options;
-	my $scheme = $arg->{scheme} || 'ldap';
-	
-	if (length $host) {
-		if ($scheme ne 'ldapi' && $host !~ /:\d+$/) {
-			$host .= ':'.($arg->{port} || 389);
-		}
-	} else {
-		$host = '';
-	}
-	
-	return "$scheme://$host";
+    my $host = shift if @_ % 2;
+    my $arg = &Net::LDAP::_options;
+    my $scheme = $arg->{scheme} || 'ldap';
+
+    # Net::LDAP->new() can take an array ref as hostnames, where
+    # the first host that we can connect to will be used.
+    # For the mock object, let's just pick the first one.
+    if (ref $host) {
+        $host = $host->[0] || '';
+    }
+    
+    if (length $host) {
+        if ($scheme ne 'ldapi' && $host !~ /:\d+$/) {
+            $host .= ':'.($arg->{port} || 389);
+        }
+    } else {
+        $host = '';
+    }
+    
+    return "$scheme://$host";
 }
 
 sub _mock_message {
-	my $self = shift;
-	my $mesg = $self->message(@_);
-	$mesg->{resultCode} = LDAP_SUCCESS;
-	$mesg->{errorMessage} = '';
-	$mesg->{matchedDN} = '';
-	$mesg->{raw} = undef;
-	$mesg->{controls} = undef;
-	$mesg->{ctrl_hash} = undef;
-	return $mesg;
+    my $self = shift;
+    my $mesg = $self->message(@_);
+    $mesg->{resultCode} = LDAP_SUCCESS;
+    $mesg->{errorMessage} = '';
+    $mesg->{matchedDN} = '';
+    $mesg->{raw} = undef;
+    $mesg->{controls} = undef;
+    $mesg->{ctrl_hash} = undef;
+    return $mesg;
 }
 
 #override
 sub _send_mesg {
-	my $ldap = shift;
-	my $mesg = shift;
-	return $mesg;
+    my $ldap = shift;
+    my $mesg = shift;
+    return $mesg;
 }
 
 =head2 mock_data
@@ -180,7 +187,7 @@ Retrieves the currently associated data tree (for the internal purpose only).
 =cut
 
 sub mock_data {
-	return shift->{mock_data};
+    return shift->{mock_data};
 }
 
 =head2 mock_schema
@@ -196,8 +203,8 @@ C<delete>.
 =cut
 
 sub mock_schema {
-	my $self = shift;
-	$self->mock_data->schema(@_);
+    my $self = shift;
+    $self->mock_data->schema(@_);
 }
 
 =head2 mock_root_dse
@@ -220,8 +227,8 @@ topmost DN. In other words, even if namingContexts is set to
 =cut
 
 sub mock_root_dse {
-	my $self = shift;
-	$self->mock_data->mock_root_dse(@_);
+    my $self = shift;
+    $self->mock_data->mock_root_dse(@_);
 }
 
 =head2 search
@@ -238,8 +245,8 @@ See L<Net::LDAP/search> for more parameter usage.
 =cut
 
 sub search {
-	my $ldap = shift;
-	return $ldap->mock_data->search(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->search(@_);
 }
 
 =head2 compare
@@ -257,8 +264,8 @@ See L<Net::LDAP/compare> for more parameter usage.
 =cut
 
 sub compare {
-	my $ldap = shift;
-	return $ldap->mock_data->compare(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->compare(@_);
 }
 
 =head2 add
@@ -274,8 +281,8 @@ See L<Net::LDAP/add> for more parameter usage.
 =cut
 
 sub add {
-	my $ldap = shift;
-	return $ldap->mock_data->add(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->add(@_);
 }
 
 =head2 modify
@@ -291,8 +298,8 @@ See L<Net::LDAP/modify> for more parameter usage.
 =cut
 
 sub modify {
-	my $ldap = shift;
-	return $ldap->mock_data->modify(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->modify(@_);
 }
 
 =head2 delete
@@ -306,8 +313,8 @@ See L<Net::LDAP/delete> for more parameter usage.
 =cut
 
 sub delete {
-	my $ldap = shift;
-	return $ldap->mock_data->delete(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->delete(@_);
 }
 
 =head2 moddn
@@ -323,8 +330,8 @@ See L<Net::LDAP/moddn> for more parameter usage.
 =cut
 
 sub moddn {
-	my $ldap = shift;
-	return $ldap->mock_data->moddn(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->moddn(@_);
 }
 
 =head2 bind
@@ -334,8 +341,8 @@ Does nothing except for returning a success message.
 =cut
 
 sub bind {
-	my $ldap = shift;
-	return $ldap->mock_data->bind(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->bind(@_);
 }
 
 =head2 unbind
@@ -345,8 +352,8 @@ Does nothing except for returning a success message.
 =cut
 
 sub unbind {
-	my $ldap = shift;
-	return $ldap->mock_data->unbind(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->unbind(@_);
 }
 
 =head2 abandon
@@ -356,8 +363,8 @@ Does nothing except for returning a success message.
 =cut
 
 sub abandon {
-	my $ldap = shift;
-	return $ldap->mock_data->abandon(@_);
+    my $ldap = shift;
+    return $ldap->mock_data->abandon(@_);
 }
 
 1;
