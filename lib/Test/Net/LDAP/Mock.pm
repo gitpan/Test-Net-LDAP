@@ -18,16 +18,17 @@ Test::Net::LDAP::Mock - A mock LDAP client with simulated search in memory
 
 =head1 SYNOPSIS
 
-C<Test::Net::LDAP::Mock> is a subclass of L<Test::Net::LDAP>, which is
-a subclass of L<Net::LDAP>.
 All the LDAP operations are performed in memory, instead of connecting to the
 real LDAP server.
 
     use Test::Net::LDAP::Mock;
     my $ldap = Test::Net::LDAP::Mock->new();
 
-In practice, it is recommended to use L<Test::Net::LDAP::Util/ldap_mockify> as
-below.
+C<Test::Net::LDAP::Mock> is a subclass of L<Test::Net::LDAP>, which is
+a subclass of L<Net::LDAP>.
+
+In the actual test code, L<Test::Net::LDAP::Util/ldap_mockify> should be used to mock
+all the C<Net::LDAP> instances in your application code.
 
     use Test::More tests => 1;
     use Test::Net::LDAP::Util qw(ldap_mockify);
@@ -231,6 +232,63 @@ sub mock_root_dse {
     $self->mock_data->mock_root_dse(@_);
 }
 
+=head2 mock_bind
+
+Gets or sets a LDAP result code (and optionally a message) that will be used as a message
+returned by a later C<bind()> call.
+
+    use Net::LDAP::Constant qw(LDAP_INVALID_CREDENTIALS);
+    $ldap->mock_bind(LDAP_INVALID_CREDENTIALS);
+    $ldap->mock_bind(LDAP_INVALID_CREDENTIALS, 'Login failed');
+    # ...
+    my $mesg = $ldap->bind(...);
+    $mesg->code && die $mesg->error; #=> die('Login failed')
+
+In the list context, it returns an array of the code and message. In the scalar
+context, it returns the code only.
+
+Alternatively, this method can take a callback subroutine:
+
+    $ldap->mock_bind(sub {
+        my $arg = shift;
+        # Validate $arg->{dn} and $arg->{password}, etc.
+        if (...invalid credentials...) {
+            return LDAP_INVALID_CREDENTIALS;
+        }
+    });
+
+The callback can return a single value as the LDAP result code or an array in the form
+C<($code, $message)>. If the callback returns nothing (or C<undef>), it is regarded as
+C<LDAP_SUCCESS>.
+
+=cut
+
+sub mock_bind {
+    my $self = shift;
+    $self->mock_data->mock_bind(@_);
+}
+
+=head2 mock_password
+
+Gets or sets the password for the simple password authentication with C<bind()>.
+
+    $ldap->mock_password('uid=test, dc=example, dc=com' => 'test_password');
+    # Caution: Passwords should usually *not* be hard-coded like this. Consider to load
+    # passwords from a config file, etc.
+
+The passwords are stored with the entry node in the data tree.
+
+Once this method is used, the C<bind()> call will check the credentials whenever the
+C<password> parameter is passed. Anonymous binding and all the other authentication
+methods are not affected.
+
+=cut
+
+sub mock_password {
+    my $self = shift;
+    $self->mock_data->mock_password(@_);
+}
+
 =head2 search
 
 Searches for entries in the currently associated data tree.
@@ -336,7 +394,8 @@ sub moddn {
 
 =head2 bind
 
-Does nothing except for returning a success message.
+Returns an expected result message if the bind result has previously been setup by the
+C<mock_bind()> method. Otherwise, a success message is returned.
 
 =cut
 
@@ -347,7 +406,7 @@ sub bind {
 
 =head2 unbind
 
-Does nothing except for returning a success message.
+Returns a success message.
 
 =cut
 
@@ -358,7 +417,7 @@ sub unbind {
 
 =head2 abandon
 
-Does nothing except for returning a success message.
+Returns a success message.
 
 =cut
 
